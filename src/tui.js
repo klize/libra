@@ -604,7 +604,7 @@ export const LibraTui = ({ client, readonly = false }) => {
     { flexDirection: "column", padding: 1 },
     React.createElement(
       Box,
-      { flexDirection: "column", marginBottom: 1, borderStyle: "single", padding: 1 },
+      { flexDirection: "column", width: "100%", marginBottom: 1, borderStyle: "single", padding: 1 },
       React.createElement(
         Text,
         { bold: true },
@@ -614,19 +614,19 @@ export const LibraTui = ({ client, readonly = false }) => {
     ),
     React.createElement(
       Box,
-      { flexDirection: "column", borderStyle: "single", padding: 1 },
+      { flexDirection: "column", width: "100%", borderStyle: "single", padding: 1 },
       participantLines.map((participant) =>
         React.createElement(Text, { key: participant.id }, formatParticipantLine(participant))
       )
     ),
     React.createElement(
       Box,
-      { flexGrow: 1, flexDirection: "column", marginTop: 1 },
+      { flexGrow: 1, width: "100%", flexDirection: "column", marginTop: 1 },
       ...renderRows(visibleRows)
     ),
     React.createElement(
       Box,
-      { marginTop: 1, borderStyle: "single", padding: 1, flexDirection: "column" },
+      { marginTop: 1, width: "100%", borderStyle: "single", padding: 1, flexDirection: "column" },
       React.createElement(PromptEditor, {
         value: input,
         onChange: setInput,

@@ -107,6 +107,7 @@ export class Room extends EventEmitter {
     this.runningTurn = 0;
     this.silenceSinceMs = null;
     this.currentHumanTurnMessageId = null;
+    this.nextSpeakerCursor = 0;
     (config.participants || []).forEach((cfg) => {
       const participant = createParticipantState(cfg);
       if (participant.type !== "human") {
@@ -194,20 +195,61 @@ export class Room extends EventEmitter {
 
   broadcast(message) {
     const candidateIds = this.getBroadcastCandidateIds(message);
-    candidateIds.forEach((id) => {
-      if (id === message.senderId) {
-        return;
-      }
+    if (this.config.allowAssistantToAssistantReplies) {
+      this.enqueueNextSpeaker(message, candidateIds);
+      return;
+    }
+    candidateIds.forEach((id) => this.enqueueParticipant(id, message.id, message.senderId));
+  }
+
+  enqueueParticipant(id, messageId, senderId = null) {
+    if (id === senderId) {
+      return false;
+    }
+    const participant = this.participants.get(id);
+    if (!participant || !participant.active || participant.type === "human") {
+      return false;
+    }
+    if (!participant.queue.includes(messageId)) {
+      participant.queue.push(messageId);
+    }
+    if (participant.state === "sleeping" || participant.state === "muted") {
+      return false;
+    }
+    this.schedule(participant);
+    return true;
+  }
+
+  enqueueNextSpeaker(message, candidateIds = this.getBroadcastCandidateIds(message), excludeIds = []) {
+    const id = this.selectNextSpeakerId(candidateIds, message.senderId, excludeIds);
+    if (!id) return false;
+    return this.enqueueParticipant(id, message.id, message.senderId);
+  }
+
+  selectNextSpeakerId(candidateIds, senderId = null, excludeIds = []) {
+    const blocked = new Set([senderId, ...excludeIds].filter(Boolean));
+    const ids = candidateIds.filter((id) => {
       const participant = this.participants.get(id);
-      if (!participant || !participant.active || participant.type === "human") {
-        return;
-      }
-      participant.queue.push(message.id);
-      if (participant.state === "sleeping" || participant.state === "muted") {
-        return;
-      }
-      this.schedule(participant);
+      return (
+        participant &&
+        participant.type !== "human" &&
+        !blocked.has(id) &&
+        this.canRun(participant) &&
+        participant.state !== "sleeping" &&
+        participant.state !== "muted"
+      );
     });
+    if (ids.length === 0) return null;
+    const allIds = [...this.participants.keys()];
+    const start = this.nextSpeakerCursor % Math.max(1, allIds.length);
+    for (let offset = 0; offset < allIds.length; offset += 1) {
+      const index = (start + offset) % allIds.length;
+      const id = allIds[index];
+      if (!ids.includes(id)) continue;
+      this.nextSpeakerCursor = index + 1;
+      return id;
+    }
+    return ids[0];
   }
 
   getBroadcastCandidateIds(message) {
@@ -424,6 +466,11 @@ export class Room extends EventEmitter {
         runSeq,
         draftId,
       });
+      if (this.config.allowAssistantToAssistantReplies && targetMessage) {
+        this.enqueueNextSpeaker(targetMessage, this.getBroadcastCandidateIds(targetMessage), [
+          participant.id,
+        ]);
+      }
     } finally {
       participant.busy = false;
       participant.draftedDraftId = null;
