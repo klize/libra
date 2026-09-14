@@ -18,6 +18,9 @@ node src/cli.js init
 node src/cli.js
 ```
 
+- 기본 세션은 `sessions/<roomName>/`에 저장된다.
+- 다시 켜면 같은 세션의 메시지, 참가자 상태, 런타임 설정을 복원한다.
+- 다른 세션을 열려면 `node src/cli.js --session <name>`을 사용한다.
 - `maxTurnsPerHuman` 기본값은 `6`이다. `0`으로 두면 제한 없음이다.
 - `allowAssistantToAssistantReplies` 기본값은 `false`다. 기본은 사용자 발화만 AI들이 반응하도록 해 반복 응답을 막는다.
 - true로 두면 AI끼리 서로 메시지를 받아 다시 응답하는 모드가 된다.
@@ -32,6 +35,8 @@ node src/cli.js
   - `/status`, `/participants`
   - `/config`
   - `/get <a2a|maxTurnsPerHuman>`
+  - `/session`
+  - `/save`
   - `/model [id] [model]`
   - `/effort [id] [low|medium|high|xhigh]`
   - `/clone <sourceId> <newId>` (예: `/clone codex codex2`)

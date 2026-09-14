@@ -7,4 +7,5 @@ libra.jsonl
 *.log
 runs/
 data/
+sessions/
 .DS_Store

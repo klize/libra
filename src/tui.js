@@ -87,6 +87,8 @@ const commandHelp = [
   "/config",
   "/get <a2a|maxTurnsPerHuman>",
   "/participants",
+  "/session",
+  "/save",
   "/model [id] [model]",
   "/effort [id] [low|medium|high|xhigh]",
   "/clone <sourceId> <newId>",
@@ -170,6 +172,11 @@ export const LibraTui = ({ client, readonly = false }) => {
     [appendRows]
   );
 
+  const requestExit = useCallback(() => {
+    void client.saveSession?.();
+    exit();
+  }, [client, exit]);
+
   const executeCommand = useCallback(
     async (rawCommand) => {
       const parts = String(rawCommand || "").trim().split(/\s+/);
@@ -193,6 +200,28 @@ export const LibraTui = ({ client, readonly = false }) => {
 
       if (command === "config") {
         emitSystemLines(formatConfigLines(client.getStatus()), "config");
+        return;
+      }
+
+      if (command === "session") {
+        const session = client.getSessionStatus?.();
+        if (!session) {
+          emitSystemLines(["session status unavailable"], "error");
+          return;
+        }
+        emitSystemLines([
+          `session=${session.sessionId}`,
+          `dir=${session.sessionDir || "unknown"}`,
+          `events=${session.eventLogPath || "unknown"}`,
+          `snapshot=${session.snapshotPath || "unknown"}`,
+          `messages=${session.messages}`,
+        ], "session");
+        return;
+      }
+
+      if (command === "save") {
+        const saved = await client.saveSession?.();
+        emitSystemLines([saved ? "session saved" : "session save unavailable"], saved ? "session" : "error");
         return;
       }
 
@@ -405,13 +434,13 @@ export const LibraTui = ({ client, readonly = false }) => {
       }
 
       if (command === "exit" || command === "quit") {
-        exit();
+        requestExit();
         return;
       }
 
       emitSystemLines([`unknown command: /${command}`], "error");
     },
-    [client, emitSystemLines, exit, setRows]
+    [client, emitSystemLines, requestExit, setRows]
   );
 
   const rememberInput = useCallback((text) => {
@@ -466,9 +495,9 @@ export const LibraTui = ({ client, readonly = false }) => {
 
   useInput((character, key) => {
     if (key?.ctrl && character?.toLowerCase() === "c") {
-      exit();
+      requestExit();
     }
-  });
+  }, { isActive: readonly });
 
   useEffect(() => {
     let mounted = true;
@@ -631,7 +660,7 @@ export const LibraTui = ({ client, readonly = false }) => {
         value: input,
         onChange: setInput,
         onSubmit: submitLine,
-        onExit: exit,
+        onExit: requestExit,
         history: inputHistory,
         readonly,
         disabled: false,

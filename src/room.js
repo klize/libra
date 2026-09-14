@@ -39,6 +39,31 @@ const classifyParticipantFailure = (error) =>
 
 const clonePlain = (value) => JSON.parse(JSON.stringify(value ?? null));
 
+const snapshotParticipantConfig = (participant) => ({
+  id: participant.id,
+  name: participant.name,
+  type: participant.type,
+  state: participant.state,
+  adapter: clonePlain(participant.adapter?.config || {}),
+  personality: clonePlain(participant.personality || {}),
+  aliases: clonePlain(participant.aliases || []),
+  limits: clonePlain(participant.limits || {}),
+  usage: clonePlain(participant.usage || {}),
+  interruptPolicy: participant.interruptPolicy || "continue",
+  runSeq: participant.runSeq || 0,
+  draftVersion: participant.draftVersion || 0,
+  status: participant.status || participant.state || "ready",
+});
+
+const rowsFromMessages = (messages, maxLines = 250) =>
+  messages.slice(Math.max(0, messages.length - maxLines)).map((message) => ({
+    kind: "message",
+    source: message.senderId,
+    id: message.id || randomUUID(),
+    at: message.createdAt || nowIso(),
+    text: message.content || "",
+  }));
+
 const createParticipantState = (cfg) => {
   const id = String(cfg.id || "").trim() || randomUUID();
   const adapter = createAdapter(cfg.adapter || { type: "manual", participantId: id, name: cfg.name || id });
@@ -137,6 +162,103 @@ export class Room extends EventEmitter {
       usage: participant.usage,
       adapter: participant.adapter?.describeSettings?.() || null,
     }));
+  }
+
+  getHistoryRows(maxLines = 250) {
+    return rowsFromMessages(this.messages, maxLines);
+  }
+
+  createSnapshot() {
+    const participants = [...this.participants.values()].map(snapshotParticipantConfig);
+    return {
+      version: 1,
+      roomName: this.config.roomName,
+      savedAt: nowIso(),
+      roomConfig: {
+        roomName: this.config.roomName,
+        wakeAfterMs: this.config.wakeAfterMs,
+        replyContextSize: this.config.replyContextSize,
+        maxTurnsPerHuman: this.config.maxTurnsPerHuman,
+        allowAssistantToAssistantReplies: this.config.allowAssistantToAssistantReplies,
+        idleTurnThreshold: this.config.idleTurnThreshold,
+      },
+      turnState: {
+        runningTurn: this.runningTurn,
+        turnCountSinceHuman: this.turnCountSinceHuman,
+        currentHumanTurnMessageId: this.currentHumanTurnMessageId,
+        nextSpeakerCursor: this.nextSpeakerCursor,
+      },
+      participants,
+      messages: clonePlain(this.messages),
+    };
+  }
+
+  restoreSnapshot(snapshot = {}) {
+    if (!snapshot || typeof snapshot !== "object") return false;
+    const roomConfig = snapshot.roomConfig || {};
+    this.config = {
+      ...this.config,
+      ...roomConfig,
+      roomName: roomConfig.roomName || snapshot.roomName || this.config.roomName,
+      maxTurnsPerHuman: normalizePositiveInt(
+        roomConfig.maxTurnsPerHuman,
+        this.config.maxTurnsPerHuman
+      ),
+      allowAssistantToAssistantReplies:
+        roomConfig.allowAssistantToAssistantReplies == null
+          ? this.config.allowAssistantToAssistantReplies
+          : roomConfig.allowAssistantToAssistantReplies === true,
+    };
+
+    this.messages = Array.isArray(snapshot.messages)
+      ? clonePlain(snapshot.messages).filter((message) => message && message.id)
+      : [];
+
+    const participantConfigs = Array.isArray(snapshot.participants)
+      ? snapshot.participants
+      : this.config.participants || [];
+    this.participants = new Map();
+    participantConfigs.forEach((cfg) => {
+      const safeState = cfg?.state || "active";
+      const participant = createParticipantState({
+        ...cfg,
+        state: safeState,
+        queue: [],
+        busy: false,
+        draftedDraftId: null,
+      });
+      participant.queue = [];
+      participant.busy = false;
+      participant.draftedDraftId = null;
+      participant.status = cfg?.status || participant.status;
+      participant.usage = cfg?.usage || participant.usage;
+      participant.runSeq = Number.isFinite(cfg?.runSeq) ? cfg.runSeq : participant.runSeq;
+      participant.draftVersion = Number.isFinite(cfg?.draftVersion)
+        ? cfg.draftVersion
+        : participant.draftVersion;
+      participant.active = participant.state === "active";
+      if (participant.type !== "human") {
+        this.participants.set(participant.id, participant);
+      }
+    });
+    this.config.participants = [...this.participants.values()].map(snapshotParticipantConfig);
+
+    const turnState = snapshot.turnState || {};
+    this.runningTurn = Number.isFinite(turnState.runningTurn)
+      ? turnState.runningTurn
+      : this.messages.length;
+    this.turnCountSinceHuman = Number.isFinite(turnState.turnCountSinceHuman)
+      ? turnState.turnCountSinceHuman
+      : 0;
+    this.currentHumanTurnMessageId =
+      turnState.currentHumanTurnMessageId ||
+      [...this.messages].reverse().find((message) => message.senderId === "human")?.id ||
+      null;
+    this.nextSpeakerCursor = Number.isFinite(turnState.nextSpeakerCursor)
+      ? turnState.nextSpeakerCursor
+      : 0;
+    this.silenceSinceMs = null;
+    return true;
   }
 
   async postMessage(author, content, parentMessageIds = []) {

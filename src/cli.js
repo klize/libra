@@ -9,6 +9,12 @@ import { LibraTui } from "./tui.js";
 
 const DEFAULT_CONFIG_PATH = "libra.config.json";
 
+const safePathSegment = (value) =>
+  String(value || "libra")
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "libra";
+
 const defaultConfig = {
   roomName: "libra",
   wakeAfterMs: 120000,
@@ -87,6 +93,10 @@ const parseArgs = (argv) => {
       result.configPath = argv[++i];
     } else if (arg === "--log" && argv[i + 1]) {
       result.logPath = argv[++i];
+    } else if (arg === "--session" && argv[i + 1]) {
+      result.sessionId = argv[++i];
+    } else if (arg === "--session-dir" && argv[i + 1]) {
+      result.sessionDir = argv[++i];
     } else if (arg.startsWith("--")) {
       result.flags[arg.slice(2)] = true;
     } else {
@@ -144,18 +154,32 @@ const main = async () => {
 
   await ensureConfigExists(configPath);
   const rawConfig = await loadConfig(configPath);
+  const sessionId = argv.sessionId || rawConfig.roomName || "libra";
+  const sessionDir = argv.sessionDir
+    ? resolve(argv.sessionDir)
+    : resolve(dirname(configPath), "sessions", safePathSegment(sessionId));
   const logPath = argv.logPath
     ? resolve(argv.logPath)
-    : resolve(dirname(configPath), `${rawConfig.roomName || "libra"}.jsonl`);
+    : resolve(sessionDir, "events.jsonl");
+  const legacyLogPath = resolve(dirname(configPath), `${rawConfig.roomName || "libra"}.jsonl`);
+  const sessionPath = resolve(sessionDir, "session.json");
+  const snapshotPath = resolve(sessionDir, "snapshot.json");
 
-  const client = new LocalRoomClient(rawConfig, { logPath });
+  const client = new LocalRoomClient(rawConfig, {
+    logPath,
+    legacyLogPath,
+    sessionId,
+    sessionDir,
+    sessionPath,
+    snapshotPath,
+  });
   await client.connect();
 
   try {
     const { waitUntilExit } = render(React.createElement(LibraTui, { client, readonly: modeNoInput }));
     await waitUntilExit();
   } finally {
-    client.disconnect();
+    await client.disconnect();
   }
 };
 
