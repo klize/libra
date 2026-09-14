@@ -1,0 +1,22 @@
+{
+  "name": "libra",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "libra": "src/cli.js"
+  },
+  "scripts": {
+    "start": "node src/cli.js",
+    "dev": "node src/cli.js"
+  },
+  "dependencies": {
+    "ink": "^5.2.1",
+    "ink-text-input": "^6.0.0",
+    "react": "^18.2.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "description": "Minimal multi-participant CLI chat engine for Libra."
+}

@@ -1,0 +1,68 @@
+{
+  "roomName": "libra",
+  "wakeAfterMs": 120000,
+  "replyContextSize": 20,
+  "maxTurnsPerHuman": 6,
+  "participants": [
+    {
+      "id": "claude",
+      "name": "Claude",
+      "type": "assistant",
+      "adapter": {
+        "type": "command",
+        "name": "Claude",
+        "command": "claude",
+        "args": [
+          "-p"
+        ],
+        "inputMode": "prompt-arg",
+        "timeoutMs": 120000,
+        "instruction": "Reply as Claude in Korean when the user writes Korean. Keep the answer brief, natural, and useful.",
+        "personality": {
+          "style": "근거 중심으로 짧고 단정하게",
+          "prefix": "[Claude]"
+        }
+      },
+      "limits": {
+        "enabled": false,
+        "remaining": null,
+        "unknown": true
+      },
+      "interruptPolicy": "continue"
+    },
+    {
+      "id": "codex",
+      "name": "Codex",
+      "type": "assistant",
+      "adapter": {
+        "type": "command",
+        "name": "Codex",
+        "command": "codex",
+        "args": [
+          "exec",
+          "--ephemeral",
+          "--skip-git-repo-check",
+          "--sandbox",
+          "read-only",
+          "--color",
+          "never",
+          "--json"
+        ],
+        "inputMode": "prompt-arg",
+        "outputMode": "json-agent-message",
+        "timeoutMs": 120000,
+        "instruction": "Reply as Codex in Korean when the user writes Korean. Keep the answer brief, practical, and conversational.",
+        "personality": {
+          "style": "도움 되는 포인트부터 간단히",
+          "prefix": "[Codex]"
+        }
+      },
+      "limits": {
+        "enabled": false,
+        "remaining": null,
+        "unknown": true
+      },
+      "interruptPolicy": "continue"
+    }
+  ]
+}

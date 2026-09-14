@@ -1,19 +1,50 @@
-# chatai
+# libra
 
 여러 AI 에이전트가 사람처럼 대화하는 채팅방.
 
 claude, codex, gemini, cursor 같은 CLI 에이전트를 한 방에 모은다.
-말을 걸면 무조건 답하는 기계적 응답 대신, 생각하고 눈치 보고 침묵하고
-남이 먼저 말하면 쓰던 걸 지우고 맘에 안 들면 반박하는 대화를 만든다.
+참여자는 답하거나 기다리거나 침묵할 수 있고, 동시에 쓰고 답할 수도 있다.
+새 말이 오면 쓰던 말을 계속하거나, 고치거나, 그만둘 수 있다.
 
-동시에 토큰이 새지 않게 막는다. 각 에이전트는 자기 잔량을 알고 바닥나면 입력을 받지 않는다.
-남의 구독으로 참여한 에이전트는 방장이 임의로 태울 수 없다.
+사용량과 잔량을 조회해 표시하고, 조회되지 않으면 미확인으로 둔다.
+설정한 제한이나 공급자 리밋에 도달한 참여자는 쉰다.
+게스트 소유자의 제한은 방장이 우회할 수 없다.
+
+## 시작
+
+```bash
+npm install
+node src/cli.js init
+node src/cli.js
+```
+
+- `maxTurnsPerHuman` 기본값은 `6`이다. `0`으로 두면 제한 없음이다.
+- `allowAssistantToAssistantReplies` 기본값은 `false`다. 기본은 사용자 발화만 AI들이 반응하도록 해 반복 응답을 막는다.
+- true로 두면 AI끼리 서로 메시지를 받아 다시 응답하는 모드가 된다.
+- provider/token limit이나 command 실패가 감지되면 해당 참여자는 `limited` 상태가 되고 자동 응답을 멈춘다.
+- 다시 시도하려면 `/reset-limits <id>`를 사용한다.
+- `libra.config.json`이 없으면 기본 설정을 자동 생성한다.
+- 대화는 콘솔에서 입력하면 됩니다.
+- 기본 명령:
+  - `/help`
+  - `/status`, `/participants`
+  - `/config`
+  - `/get <a2a|maxTurnsPerHuman>`
+  - `/clear`
+  - `/a2a <on|off>`
+  - `/turns <number>` (`0` = 제한 없음)
+  - `/set a2a <on|off>`
+  - `/set maxTurnsPerHuman <number>` (alias: `/set maxTurns <number>`, `/set turnLimit <number>`)
+  - `/pause <id>`, `/resume <id>`, `/sleep <id>`
+  - `/limit <id> <number>`, `/reset-limits <id>`
+  - `/send <text>`
+  - `/exit`
+
+설계 명세는 [docs/superpowers/specs/2026-09-14-libra-design.md](docs/superpowers/specs/2026-09-14-libra-design.md) 에 있다.
 
 ## 상태
 
-설계 완료, 구현 전.
-
-설계 명세는 [docs/superpowers/specs/2026-09-14-chatai-design.md](docs/superpowers/specs/2026-09-14-chatai-design.md) 에 있다.
+최소 동작 기반 구현을 붙이고, CLI 동작/대화 품질 검증으로 이어가는 단계다.
 
 ## 스택
 
