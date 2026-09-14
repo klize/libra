@@ -30,8 +30,16 @@ const summarizeUsage = (usage) => {
   return String(usage.remaining);
 };
 
+const summarizeAdapter = (adapter) => {
+  if (!adapter) return "";
+  const parts = [];
+  if (adapter.model) parts.push(`model=${adapter.model}`);
+  if (adapter.effort) parts.push(`effort=${adapter.effort}`);
+  return parts.length > 0 ? ` ${parts.join(" ")}` : "";
+};
+
 const formatParticipantLine = (participant) =>
-  `${participant.id} ${participant.state} queue=${participant.queue} busy=${participant.busy} limit=${summarizeLimit(participant.limits)} usage=${summarizeUsage(participant.usage)}`;
+  `${participant.id} ${participant.state} queue=${participant.queue} busy=${participant.busy} limit=${summarizeLimit(participant.limits)} usage=${summarizeUsage(participant.usage)}${summarizeAdapter(participant.adapter)}`;
 
 const summarizeRoomTurns = (status) => {
   if (!status.maxTurnsPerHuman) return "remainingTurns=∞";
@@ -79,6 +87,9 @@ const commandHelp = [
   "/config",
   "/get <a2a|maxTurnsPerHuman>",
   "/participants",
+  "/model [id] [model]",
+  "/effort [id] [low|medium|high|xhigh]",
+  "/clone <sourceId> <newId>",
   "/clear",
   "/a2a <on|off>",
   "/turns <number> (0 = unlimited)",
@@ -182,6 +193,65 @@ export const LibraTui = ({ client, readonly = false }) => {
 
       if (command === "config") {
         emitSystemLines(formatConfigLines(client.getStatus()), "config");
+        return;
+      }
+
+      if (command === "model" || command === "effort") {
+        const [id, ...valueParts] = args;
+        const value = valueParts.join(" ").trim();
+        const currentStatus = client.getStatus();
+        const key = command;
+        if (!id) {
+          const lines = currentStatus.participants.map((participant) => {
+            const current = participant.adapter?.[key] || "unknown";
+            return `${participant.id} ${key}=${current}`;
+          });
+          emitSystemLines(lines.length > 0 ? lines : ["no participants"], "config");
+          return;
+        }
+        const participant = currentStatus.participants.find((item) => item.id === id);
+        if (!participant) {
+          emitSystemLines([`unknown participant: ${id}`], "error");
+          return;
+        }
+        if (!value) {
+          emitSystemLines([
+            `${id} ${key}=${participant.adapter?.[key] || "unknown"}`,
+          ], "config");
+          return;
+        }
+        const updated =
+          key === "model"
+            ? client.setParticipantModel(id, value)
+            : client.setParticipantEffort(id, value);
+        if (!updated) {
+          emitSystemLines([`failed to set ${key} for ${id}`], "error");
+          return;
+        }
+        emitSystemLines([
+          `${id} ${key}=${updated[key] || value} (effective immediately, runtime only)`,
+        ], "state");
+        refreshStatus();
+        return;
+      }
+
+      if (command === "clone" || command === "spawn") {
+        const [sourceId, newId] = args;
+        if (!sourceId || !newId) {
+          emitSystemLines(["usage: /clone <sourceId> <newId>"], "help");
+          return;
+        }
+        const participant = client.cloneParticipant(sourceId, newId);
+        if (!participant) {
+          emitSystemLines([
+            `failed to clone ${sourceId} as ${newId} (check source exists and new id is unused)`,
+          ], "error");
+          return;
+        }
+        emitSystemLines([
+          `${newId} cloned from ${sourceId}${summarizeAdapter(participant.adapter)} (runtime only)`,
+        ], "state");
+        refreshStatus();
         return;
       }
 
@@ -464,7 +534,14 @@ export const LibraTui = ({ client, readonly = false }) => {
     };
     const onState = (state) => {
       if (!mounted) return;
-      const next = state?.state ? `state ${state.participantId} -> ${state.state}` : `state changed`;
+      const next =
+        state?.type === "participant.added"
+          ? `${state.participantId} added from ${state.sourceId}`
+          : state?.type === "participant.adapter"
+          ? `${state.participantId} ${state.key} -> ${state.value}`
+          : state?.state
+            ? `state ${state.participantId} -> ${state.state}`
+            : `state changed`;
       emitSystemLines([next], "state");
       refreshStatus();
     };

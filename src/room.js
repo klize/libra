@@ -37,6 +37,8 @@ const normalizeMentionText = (value) => String(value || "").trim().toLowerCase()
 const classifyParticipantFailure = (error) =>
   error?.code === "PROVIDER_LIMIT" ? "provider_limit" : "adapter_error";
 
+const clonePlain = (value) => JSON.parse(JSON.stringify(value ?? null));
+
 const createParticipantState = (cfg) => {
   const id = String(cfg.id || "").trim() || randomUUID();
   const adapter = createAdapter(cfg.adapter || { type: "manual", participantId: id, name: cfg.name || id });
@@ -132,6 +134,7 @@ export class Room extends EventEmitter {
       status: participant.status,
       limits: participant.limits,
       usage: participant.usage,
+      adapter: participant.adapter?.describeSettings?.() || null,
     }));
   }
 
@@ -504,6 +507,89 @@ export class Room extends EventEmitter {
       at: nowIso(),
     });
     return true;
+  }
+
+  cloneParticipant(sourceId, newId) {
+    const source = this.participants.get(sourceId);
+    const id = String(newId || "").trim();
+    if (!source || !id || this.participants.has(id)) {
+      return null;
+    }
+    const cfg = {
+      id,
+      name: id,
+      type: source.type,
+      state: "active",
+      adapter: {
+        ...clonePlain(source.adapter?.config || {}),
+        name: id,
+      },
+      personality: clonePlain(source.personality || {}),
+      aliases: [id],
+      limits: {
+        enabled: false,
+        remaining: null,
+        unknown: true,
+      },
+      interruptPolicy: source.interruptPolicy || "continue",
+    };
+    const participant = createParticipantState(cfg);
+    if (participant.type === "human") {
+      return null;
+    }
+    this.participants.set(participant.id, participant);
+    this.config.participants = [...(this.config.participants || []), cfg];
+    this.emit("state", {
+      type: "participant.added",
+      eventId: randomUUID(),
+      room: this.config.roomName,
+      participantId: participant.id,
+      sourceId,
+      at: nowIso(),
+    });
+    return this.listParticipants().find((item) => item.id === participant.id) || null;
+  }
+
+  setParticipantModel(participantId, model) {
+    const participant = this.participants.get(participantId);
+    if (!participant || typeof participant.adapter?.setModel !== "function") {
+      return null;
+    }
+    const previous = participant.adapter.describeSettings?.() || null;
+    const adapter = participant.adapter.setModel(model);
+    if (!adapter) return null;
+    this.emit("state", {
+      type: "participant.adapter",
+      eventId: randomUUID(),
+      room: this.config.roomName,
+      participantId,
+      key: "model",
+      previous: previous?.model ?? null,
+      value: adapter.model,
+      at: nowIso(),
+    });
+    return adapter;
+  }
+
+  setParticipantEffort(participantId, effort) {
+    const participant = this.participants.get(participantId);
+    if (!participant || typeof participant.adapter?.setEffort !== "function") {
+      return null;
+    }
+    const previous = participant.adapter.describeSettings?.() || null;
+    const adapter = participant.adapter.setEffort(effort);
+    if (!adapter) return null;
+    this.emit("state", {
+      type: "participant.adapter",
+      eventId: randomUUID(),
+      room: this.config.roomName,
+      participantId,
+      key: "effort",
+      previous: previous?.effort ?? null,
+      value: adapter.effort,
+      at: nowIso(),
+    });
+    return adapter;
   }
 
   getStatus() {

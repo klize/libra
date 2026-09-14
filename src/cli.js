@@ -24,7 +24,7 @@ const defaultConfig = {
         type: "command",
         name: "Claude",
         command: "claude",
-        args: ["--model", "sonnet", "--effort", "high", "-p"],
+        args: ["--model", "haiku", "--effort", "high", "-p"],
         inputMode: "prompt-arg",
         timeoutMs: 120000,
         instruction:

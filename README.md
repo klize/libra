@@ -21,7 +21,7 @@ node src/cli.js
 - `maxTurnsPerHuman` 기본값은 `6`이다. `0`으로 두면 제한 없음이다.
 - `allowAssistantToAssistantReplies` 기본값은 `false`다. 기본은 사용자 발화만 AI들이 반응하도록 해 반복 응답을 막는다.
 - true로 두면 AI끼리 서로 메시지를 받아 다시 응답하는 모드가 된다.
-- 기본 실행 모델은 Claude `sonnet/high`, Codex `gpt-5.6-terra/high`다.
+- 기본 실행 모델은 Claude `haiku/high`, Codex `gpt-5.6-terra/high`다.
 - 사람 메시지에 `클로드`/`Claude` 또는 `코덱스`/`Codex`가 들어가면 해당 참여자만 응답한다.
 - provider/token limit이나 command 실패가 감지되면 해당 참여자는 `limited` 상태가 되고 자동 응답을 멈춘다.
 - 다시 시도하려면 `/reset-limits <id>`를 사용한다.
@@ -32,6 +32,9 @@ node src/cli.js
   - `/status`, `/participants`
   - `/config`
   - `/get <a2a|maxTurnsPerHuman>`
+  - `/model [id] [model]`
+  - `/effort [id] [low|medium|high|xhigh]`
+  - `/clone <sourceId> <newId>` (예: `/clone codex codex2`)
   - `/clear`
   - `/a2a <on|off>`
   - `/turns <number>` (`0` = 제한 없음)

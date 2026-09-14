@@ -122,6 +122,27 @@ export class LocalRoomClient extends EventEmitter {
     return this.room.setConfig(key, value);
   }
 
+  setParticipantModel(participantId, model) {
+    if (!this.room) {
+      return null;
+    }
+    return this.room.setParticipantModel(participantId, model);
+  }
+
+  setParticipantEffort(participantId, effort) {
+    if (!this.room) {
+      return null;
+    }
+    return this.room.setParticipantEffort(participantId, effort);
+  }
+
+  cloneParticipant(sourceId, newId) {
+    if (!this.room) {
+      return null;
+    }
+    return this.room.cloneParticipant(sourceId, newId);
+  }
+
   getStatus() {
     if (!this.room) {
       return {
@@ -140,6 +161,7 @@ export class LocalRoomClient extends EventEmitter {
               status: "ready",
               limits: item.limits || { enabled: false, remaining: null, unknown: true },
               usage: item.usage || { known: false, remaining: null, lastChecked: null },
+              adapter: null,
             }))
           : [],
         totalMessages: 0,

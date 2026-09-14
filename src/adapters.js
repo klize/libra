@@ -96,6 +96,52 @@ const parseJsonAgentMessageOutput = (output) => {
   return { text, usage };
 };
 
+const findFlagValue = (args, flags) => {
+  const index = args.findIndex((item) => flags.includes(item));
+  return index >= 0 ? args[index + 1] || null : null;
+};
+
+const upsertFlagValue = (args, preferredFlag, flags, value) => {
+  const nextArgs = [...args];
+  const index = nextArgs.findIndex((item) => flags.includes(item));
+  if (index >= 0) {
+    nextArgs[index] = preferredFlag;
+    nextArgs[index + 1] = value;
+    return nextArgs;
+  }
+  return [...nextArgs, preferredFlag, value];
+};
+
+const findConfigValue = (args, key) => {
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] !== "-c" && args[index] !== "--config") continue;
+    const assignment = String(args[index + 1] || "");
+    const separatorIndex = assignment.indexOf("=");
+    if (separatorIndex < 0) continue;
+    if (assignment.slice(0, separatorIndex) === key) {
+      return assignment.slice(separatorIndex + 1);
+    }
+  }
+  return null;
+};
+
+const upsertConfigValue = (args, key, value) => {
+  const nextArgs = [...args];
+  for (let index = 0; index < nextArgs.length; index += 1) {
+    if (nextArgs[index] !== "-c" && nextArgs[index] !== "--config") continue;
+    const assignment = String(nextArgs[index + 1] || "");
+    const separatorIndex = assignment.indexOf("=");
+    if (separatorIndex < 0) continue;
+    if (assignment.slice(0, separatorIndex) === key) {
+      nextArgs[index + 1] = `${key}=${value}`;
+      return nextArgs;
+    }
+  }
+  return [...nextArgs, "-c", `${key}=${value}`];
+};
+
+const isCodexCommand = (command) => /(?:^|[/\\])codex$/.test(String(command || ""));
+
 export function resolveAdapterType(input) {
   if (!input || typeof input !== "string") return "manual";
   return input.toLowerCase();
@@ -130,6 +176,14 @@ export class ManualAdapter {
       supportsInterruption: false,
     };
   }
+
+  describeSettings() {
+    return {
+      type: "manual",
+      model: null,
+      effort: null,
+    };
+  }
 }
 
 export class CommandAdapter {
@@ -144,6 +198,37 @@ export class CommandAdapter {
     this.inputMode = config.inputMode || "json-stdin";
     this.instruction = config.instruction || "";
     this.outputMode = config.outputMode || "plain";
+  }
+
+  describeSettings() {
+    return {
+      type: "command",
+      command: this.command,
+      model: findFlagValue(this.args, ["--model", "-m"]),
+      effort: isCodexCommand(this.command)
+        ? findConfigValue(this.args, "model_reasoning_effort")
+        : findFlagValue(this.args, ["--effort"]),
+    };
+  }
+
+  setModel(model) {
+    const value = toText(model, "");
+    if (!value) return null;
+    this.args = isCodexCommand(this.command)
+      ? upsertFlagValue(this.args, "-m", ["--model", "-m"], value)
+      : upsertFlagValue(this.args, "--model", ["--model", "-m"], value);
+    this.config.args = this.args;
+    return this.describeSettings();
+  }
+
+  setEffort(effort) {
+    const value = toText(effort, "");
+    if (!value) return null;
+    this.args = isCodexCommand(this.command)
+      ? upsertConfigValue(this.args, "model_reasoning_effort", value)
+      : upsertFlagValue(this.args, "--effort", ["--effort"], value);
+    this.config.args = this.args;
+    return this.describeSettings();
   }
 
   async generateReply(context) {

@@ -14,7 +14,7 @@
         "command": "claude",
         "args": [
           "--model",
-          "sonnet",
+          "haiku",
           "--effort",
           "high",
           "-p"
