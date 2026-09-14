@@ -32,6 +32,8 @@ const messagePreview = (message) => {
   return raw.replace(/\s+/g, " ").slice(0, 120);
 };
 
+const normalizeMentionText = (value) => String(value || "").trim().toLowerCase();
+
 const classifyParticipantFailure = (error) =>
   error?.code === "PROVIDER_LIMIT" ? "provider_limit" : "adapter_error";
 
@@ -40,6 +42,13 @@ const createParticipantState = (cfg) => {
   const adapter = createAdapter(cfg.adapter || { type: "manual", participantId: id, name: cfg.name || id });
   const sourceConfig = { ...cfg };
   delete sourceConfig.adapter;
+  const aliases = [
+    id,
+    cfg.name,
+    ...(Array.isArray(cfg.aliases) ? cfg.aliases : []),
+  ]
+    .map(normalizeMentionText)
+    .filter(Boolean);
   return {
     id,
     name: cfg.name || id,
@@ -47,6 +56,7 @@ const createParticipantState = (cfg) => {
     state: cfg.state || "active",
     adapter,
     personality: cfg.personality || {},
+    aliases: [...new Set(aliases)],
     status: "ready",
     active: cfg.state ? cfg.state === "active" : true,
     busy: false,
@@ -180,7 +190,7 @@ export class Room extends EventEmitter {
   }
 
   broadcast(message) {
-    const candidateIds = [...this.participants.keys()];
+    const candidateIds = this.getBroadcastCandidateIds(message);
     candidateIds.forEach((id) => {
       if (id === message.senderId) {
         return;
@@ -194,6 +204,23 @@ export class Room extends EventEmitter {
         return;
       }
       this.schedule(participant);
+    });
+  }
+
+  getBroadcastCandidateIds(message) {
+    const candidateIds = [...this.participants.keys()];
+    if (message.senderId !== "human") {
+      return candidateIds;
+    }
+    const mentionedIds = this.getMentionedParticipantIds(message.content);
+    return mentionedIds.length > 0 ? mentionedIds : candidateIds;
+  }
+
+  getMentionedParticipantIds(content) {
+    const text = normalizeMentionText(content);
+    return [...this.participants.keys()].filter((id) => {
+      const participant = this.participants.get(id);
+      return participant?.aliases?.some((alias) => text.includes(alias));
     });
   }
 

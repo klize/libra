@@ -13,6 +13,10 @@
         "name": "Claude",
         "command": "claude",
         "args": [
+          "--model",
+          "sonnet",
+          "--effort",
+          "high",
           "-p"
         ],
         "inputMode": "prompt-arg",
@@ -23,6 +27,10 @@
           "prefix": "[Claude]"
         }
       },
+      "aliases": [
+        "claude",
+        "클로드"
+      ],
       "limits": {
         "enabled": false,
         "remaining": null,
@@ -42,6 +50,10 @@
           "exec",
           "--ephemeral",
           "--skip-git-repo-check",
+          "-m",
+          "gpt-5.6-terra",
+          "-c",
+          "model_reasoning_effort=high",
           "--sandbox",
           "read-only",
           "--color",
@@ -57,6 +69,10 @@
           "prefix": "[Codex]"
         }
       },
+      "aliases": [
+        "codex",
+        "코덱스"
+      ],
       "limits": {
         "enabled": false,
         "remaining": null,
