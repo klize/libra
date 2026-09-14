@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, Text, useApp, useInput } from "ink";
-import TextInput from "ink-text-input";
+import { PromptEditor } from "./prompt-editor.js";
 
 const toLabel = (id) => (id === "human" ? "you" : id);
 
@@ -140,6 +140,7 @@ export const LibraTui = ({ client, readonly = false }) => {
   const [status, setStatus] = useState(() => client.getStatus());
   const [isBusy, setIsBusy] = useState(false);
   const [hasConnected, setHasConnected] = useState(false);
+  const [inputHistory, setInputHistory] = useState([]);
   const connectedAnnouncedRef = useRef(false);
 
   const appendRows = useCallback(
@@ -343,6 +344,15 @@ export const LibraTui = ({ client, readonly = false }) => {
     [client, emitSystemLines, exit, setRows]
   );
 
+  const rememberInput = useCallback((text) => {
+    setInputHistory((prev) => {
+      const trimmed = String(text || "").trim();
+      if (!trimmed) return prev;
+      const withoutDuplicateTail = prev[prev.length - 1] === trimmed ? prev.slice(0, -1) : prev;
+      return clampList([...withoutDuplicateTail, trimmed], 100);
+    });
+  }, []);
+
   const submitLine = useCallback(
     async (value) => {
       const text = String(value || "").trim();
@@ -352,6 +362,7 @@ export const LibraTui = ({ client, readonly = false }) => {
       }
 
       if (text.startsWith("/")) {
+        rememberInput(text);
         setInput("");
         try {
           await executeCommand(text.slice(1));
@@ -371,6 +382,7 @@ export const LibraTui = ({ client, readonly = false }) => {
       setInput("");
       setIsBusy(true);
       try {
+        rememberInput(text);
         await client.sendMessage("human", text);
       } catch (error) {
         emitSystemLines([String(error?.message || error)], "error");
@@ -379,7 +391,7 @@ export const LibraTui = ({ client, readonly = false }) => {
         setIsBusy(false);
       }
     },
-    [client, emitSystemLines, executeCommand, isBusy, refreshStatus]
+    [client, emitSystemLines, executeCommand, isBusy, refreshStatus, rememberInput]
   );
 
   useInput((character, key) => {
@@ -538,20 +550,16 @@ export const LibraTui = ({ client, readonly = false }) => {
     React.createElement(
       Box,
       { marginTop: 1, borderStyle: "single", padding: 1, flexDirection: "column" },
-      React.createElement(
-        Box,
-        { flexDirection: "row" },
-        React.createElement(Text, { color: "blue", bold: true }, "you> "),
-        readonly
-          ? React.createElement(Text, null, input)
-          : React.createElement(TextInput, {
-              value: input,
-              onChange: setInput,
-              onSubmit: submitLine,
-              focus: !readonly,
-            }),
-        isBusy ? React.createElement(Text, { color: "gray" }, " (sending...)") : null
-      ),
+      React.createElement(PromptEditor, {
+        value: input,
+        onChange: setInput,
+        onSubmit: submitLine,
+        onExit: exit,
+        history: inputHistory,
+        readonly,
+        disabled: false,
+        busy: isBusy,
+      }),
       React.createElement(Text, { dimColor: true }, helpLine)
     )
   );

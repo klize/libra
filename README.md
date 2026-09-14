@@ -39,6 +39,14 @@ node src/cli.js
   - `/limit <id> <number>`, `/reset-limits <id>`
   - `/send <text>`
   - `/exit`
+- 입력창:
+  - `Enter`: 보내기
+  - `Ctrl+J`: 줄바꿈
+  - `↑` / `↓`: 입력 히스토리
+  - `←` / `→`: 커서 이동
+  - `Ctrl+A` / `Ctrl+E`: 처음/끝으로 이동
+  - `Ctrl+U` / `Ctrl+K` / `Ctrl+W`: 앞쪽 삭제/뒤쪽 삭제/이전 단어 삭제
+  - `Esc`: 입력창 비우기
 
 설계 명세는 [docs/superpowers/specs/2026-09-14-libra-design.md](docs/superpowers/specs/2026-09-14-libra-design.md) 에 있다.
 
