@@ -73,8 +73,8 @@ const keys = {
   ctrlC: "\x03",
   ctrlD: "\x04",
   ctrlE: "\x05",
-  ctrlJ: "\n",
   ctrlK: "\x0b",
+  ctrlO: "\x0f",
   ctrlU: "\x15",
   ctrlW: "\x17",
   escape: "\x1b",
@@ -174,13 +174,19 @@ export const PromptEditor = ({
         return;
       }
 
-      if (raw === keys.enter) {
+      const submitIndex = raw.search(/[\r\n]/);
+      if (submitIndex >= 0) {
+        const beforeSubmit = raw.slice(0, submitIndex);
+        if (beforeSubmit) {
+          const next = insertText(valueRef.current, cursorRef.current, beforeSubmit);
+          setDraft(next.value, next.cursor);
+        }
         setHistoryIndex(null);
         void onSubmit(valueRef.current);
         return;
       }
 
-      if (raw === keys.ctrlJ) {
+      if (raw === keys.ctrlO) {
         applyEdit((current, index) => insertText(current, index, "\n"));
         return;
       }
@@ -279,7 +285,7 @@ export const PromptEditor = ({
   const display = useMemo(() => valueWithCursor(value, cursor), [cursor, value]);
   const promptColor = value.trim().startsWith("/") ? "cyan" : "blue";
   const helper =
-    "Enter send | Ctrl+J newline | ↑/↓ history | ←/→ move | Ctrl+A/E/U/K/W edit | Esc clear";
+    "Enter send | Ctrl+O newline | ↑/↓ history | ←/→ move | Ctrl+A/E/U/K/W edit | Esc clear";
   const displayValue = `${value.length === 0 ? "▌ Type a message or /help" : display.value}${
     busy ? " (sending...)" : ""
   }`;
