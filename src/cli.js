@@ -6,6 +6,7 @@ import { resolve, dirname } from "node:path";
 import { render } from "ink";
 import { LocalRoomClient } from "./room-client.js";
 import { LibraTui } from "./tui.js";
+import { runLineCli } from "./line-cli.js";
 
 const DEFAULT_CONFIG_PATH = "libra.config.json";
 
@@ -97,6 +98,10 @@ const parseArgs = (argv) => {
       result.sessionId = argv[++i];
     } else if (arg === "--session-dir" && argv[i + 1]) {
       result.sessionDir = argv[++i];
+    } else if (arg === "--input" && argv[i + 1]) {
+      result.inputMode = argv[++i];
+    } else if (arg === "--line") {
+      result.inputMode = "line";
     } else if (arg.startsWith("--")) {
       result.flags[arg.slice(2)] = true;
     } else {
@@ -138,6 +143,7 @@ const main = async () => {
   const configPath = resolveProjectPath(argv.configPath);
   const modeInit = argv.flags.init === true || argv.args.includes("init");
   const modeNoInput = argv.flags["no-input"] === true;
+  const inputMode = String(argv.inputMode || "raw").toLowerCase();
 
   if (modeInit) {
     let existingConfig = {};
@@ -176,8 +182,12 @@ const main = async () => {
   await client.connect();
 
   try {
-    const { waitUntilExit } = render(React.createElement(LibraTui, { client, readonly: modeNoInput }));
-    await waitUntilExit();
+    if (inputMode === "line") {
+      await runLineCli(client);
+    } else {
+      const { waitUntilExit } = render(React.createElement(LibraTui, { client, readonly: modeNoInput }));
+      await waitUntilExit();
+    }
   } finally {
     await client.disconnect();
   }

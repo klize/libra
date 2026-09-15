@@ -18,6 +18,8 @@ node src/cli.js init
 node src/cli.js
 ```
 
+- iPad SSH처럼 한글 조합 입력이 깨지는 환경에서는 `node src/cli.js --input line`을 사용한다.
+- line input mode에서 Enter는 전송이고, 줄 끝에 `\`를 붙이고 Enter를 누르면 다음 줄을 이어 쓴다.
 - 기본 세션은 `sessions/<roomName>/`에 저장된다.
 - 다시 켜면 같은 세션의 메시지, 참가자 상태, 런타임 설정을 복원한다.
 - 다른 세션을 열려면 `node src/cli.js --session <name>`을 사용한다.
@@ -37,6 +39,7 @@ node src/cli.js
   - `/get <a2a|maxTurnsPerHuman>`
   - `/session`
   - `/save`
+  - `/input`
   - `/model [id] [model]`
   - `/effort [id] [low|medium|high|xhigh]`
   - `/clone <sourceId> <newId>` (예: `/clone codex codex2`)

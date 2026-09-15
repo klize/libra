@@ -89,6 +89,7 @@ const commandHelp = [
   "/participants",
   "/session",
   "/save",
+  "/input",
   "/model [id] [model]",
   "/effort [id] [low|medium|high|xhigh]",
   "/clone <sourceId> <newId>",
@@ -222,6 +223,13 @@ export const LibraTui = ({ client, readonly = false }) => {
       if (command === "save") {
         const saved = await client.saveSession?.();
         emitSystemLines([saved ? "session saved" : "session save unavailable"], saved ? "session" : "error");
+        return;
+      }
+
+      if (command === "input") {
+        emitSystemLines([
+          "input=raw; iPad/SSH Korean IME safe mode: restart with --input line",
+        ], "config");
         return;
       }
 
