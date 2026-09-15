@@ -21,7 +21,7 @@ const defaultConfig = {
   wakeAfterMs: 120000,
   replyContextSize: 20,
   maxTurnsPerHuman: 6,
-  allowAssistantToAssistantReplies: false,
+  allowAssistantToAssistantReplies: true,
   participants: [
     {
       id: "claude",

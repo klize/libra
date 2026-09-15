@@ -24,10 +24,10 @@ node src/cli.js
 - 다시 켜면 같은 세션의 메시지, 참가자 상태, 런타임 설정을 복원한다.
 - 다른 세션을 열려면 `node src/cli.js --session <name>`을 사용한다.
 - `maxTurnsPerHuman` 기본값은 `6`이다. `0`으로 두면 제한 없음이다.
-- `allowAssistantToAssistantReplies` 기본값은 `false`다. 기본은 사용자 발화만 AI들이 반응하도록 해 반복 응답을 막는다.
-- true로 두면 AI끼리 서로 메시지를 받아 다시 응답하는 모드가 된다.
+- `allowAssistantToAssistantReplies` 기본값은 `true`다. 기본은 AI끼리 서로 메시지를 받아 이어서 응답하는 모드다.
+- 끄려면 `/a2a off`를 사용한다.
 - 기본 실행 모델은 Claude `haiku/high`, Codex `gpt-5.6-terra/high`다.
-- 사람 메시지에 `클로드`/`Claude` 또는 `코덱스`/`Codex`가 들어가면 해당 참여자만 응답한다.
+- 사람 메시지에 참가자 id나 alias를 넣으면 해당 참여자만 먼저 응답한다. 예: `codex2야 이거 봐줘`, `클로드야 요약해줘`.
 - provider/token limit이나 command 실패가 감지되면 해당 참여자는 `limited` 상태가 되고 자동 응답을 멈춘다.
 - 다시 시도하려면 `/reset-limits <id>`를 사용한다.
 - `libra.config.json`이 없으면 기본 설정을 자동 생성한다.
